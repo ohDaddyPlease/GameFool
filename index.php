@@ -1,16 +1,6 @@
 <?php
 /* TODO-лист
-- убрать тест проги в конце
-- убрать все echo в коде, любой результат для вывода добавлять в $this->result
-- ~122 и ~159 строка, придумать более адекватное решение
-- я не уверен насчет того, нужна ли ссылка для $this: &$this; проверить 
-- вынести регекспы и стопку ифов в методы
-- возможно array_values не нужен, т.к. индекс карт не важен
-- урезать кол-во комментов, их чё-то много и сложнее читается код
-- убрать все TODO
 */
-
-
 
 /*
 данный класс является главным и обрабатывает все другие объекты (классы) и отвечает за управление всей игрой
@@ -45,6 +35,12 @@ class GameFool
 
     //номер колоды (рандомный)
     private $deckNumber = 0;
+
+    //первый игрок в раунде - нападающий
+    private $firstPlayer;
+
+    //второй игрок в раунде - защищающийся
+    private $secondPlayer;
 
 
 
@@ -129,107 +125,114 @@ class GameFool
     }
 
     //добавить на вывод строку
-    public function addToResult($str = "") {
-        $this->result .= ($this->result != "") ? "\n" . $str : $str;
+    public function addToResult($str = '') {
+        $this->result .= ($this->result != '') ? "\n" . $str : $str;
+    }
+
+    //выгоняем игрока из игры
+    private function kickOutPlayer($player) {
+        foreach ($this->playersQueue as $key => $playerInQueue) {
+            if ($player == $playerInQueue) {
+                unset($this->playersQueue[$key]);
+            }
+        }
+    }
+
+    private function secondPlayerLoose() {
+          //первый игрок отдаёт свои карты того же достоинства
+          $this->firstPlayer->giveCards();
+
+          foreach ($this->heap as $card){
+              $this->addToResult($this->spaces . $this->secondPlayer->name . ' <-- ' . $card);
+          }
+
+          //второй игрок забирает карты из хипа и сортирует карты
+          $this->secondPlayer->cards = array_merge($this->secondPlayer->cards, $this->heap);
+          $this->secondPlayer->sortCards();
     }
 
     //старт игры по раундам
     private function play() {
         for ($i = 1; ; $i++) {
             //берем из очереди первых игроков
-            $firstPlayer = array_shift($this->playersQueue);
-            $secondPlayer = array_shift($this->playersQueue);
+            $this->firstPlayer = array_shift($this->playersQueue);
+            $this->secondPlayer = array_shift($this->playersQueue);
 
-            $secondPlayerLoose = false;
+            //флаг для формирования стэка; кривое решение
+            $this->secondPlayerLoose = false;
 
+            //собираем номер раунда
             $roundNumber = (strlen($i) == 1) ? "0$i: " : "$i: ";
 
+            //собираем пробелы для корректного вывода результата
             $this->spaces = str_repeat(' ', strlen($roundNumber));
+
+            //объявляем игроков для раунда
             $this->addToResult(
                 $roundNumber . 
-                $firstPlayer->name . '(' . implode(',', $firstPlayer->cards) . ') vs ' .
-                $secondPlayer->name . '(' . implode(',', $secondPlayer->cards) . ')'
+                $this->firstPlayer->name . '(' . implode(',', $this->firstPlayer->cards) . ') vs ' .
+                $this->secondPlayer->name . '(' . implode(',', $this->secondPlayer->cards) . ')'
         );
 
-            $firstPlayer->throwCard();
+            //первый игрок атакует
+            $this->firstPlayer->throwCard();
 
-            //какой-то кривой код, я понимаю, но дедлайн по сдаче тз поджимает
-            if ($secondPlayer->defend()) {
+            //второй игрок пытается отбиться
+            if ($this->secondPlayer->defend()) {
                 while(1) {
-                    if ($firstPlayer->tossCard()) {
-                        if (!$secondPlayer->defend()) {
-                            //игрок отдаёт свои карты того же достоинства
-                            //while ($firstPlayer->tossCard());
-                            $firstPlayer->giveCards();
+                    //если он отбился, то первый пытается подкинуть карты
+                    if ($this->firstPlayer->tossCard()) {
+                        //снова второй пытаестя отбиться
+                        if (!$this->secondPlayer->defend()) {
+                            //если не выходит отбиться - проигрывает
+                            $this->secondPlayerLoose();
 
-                            foreach ($this->heap as $card){
-                                $this->addToResult($this->spaces . $secondPlayer->name . ' <-- ' . $card);
-                            }
+                            $this->secondPlayerLoose = true;
 
-                            //забирает карты из хипа и сортирует карты
-                            $secondPlayer->cards = array_merge($secondPlayer->cards, $this->heap);
-                            $secondPlayer->sortCards();
-
-                            $secondPlayerLoose = true;
                             break;
                         }
                     } else {
+                        //если не может больше подкинуть, то выходит из игры
                         break;
                     }
                 }
             } else {
-                //игрок отдаёт свои карты того же достоинства
-                //while ($firstPlayer->tossCard());
-                $firstPlayer->giveCards();
+                //если не может отбиться, то проигрывает раунд
+                $this->secondPlayerLoose();
 
-                foreach ($this->heap as $card){
-                    $this->addToResult($this->spaces .  $secondPlayer->name . ' <-- ' . $card);
-                }
-
-                //забирает карты из хипа и сортирует карты
-                $secondPlayer->cards = array_merge($secondPlayer->cards, $this->heap);
-                $secondPlayer->sortCards();
-
-                $secondPlayerLoose = true;
+                $this->secondPlayerLoose = true;
             }
 
-            $firstPlayer->takeCards();
-            $secondPlayer->takeCards();
+            //в конце раунда игроки берут карты
+            $this->firstPlayer->takeCards();
+            $this->secondPlayer->takeCards();
 
-            //ужасный стэк, он работает только для 3х игроков
-            if ($secondPlayerLoose) {
-                array_push($this->playersQueue, $firstPlayer, $secondPlayer);
+            //ужасный стэк, он работает; только для 3х игроков
+            if ($this->secondPlayerLoose) {
+                array_push($this->playersQueue, $this->firstPlayer, $this->secondPlayer);
             } else {
-                array_unshift($this->playersQueue, $secondPlayer);
-                array_push($this->playersQueue, $firstPlayer);
+                array_unshift($this->playersQueue, $this->secondPlayer);
+                array_push($this->playersQueue, $this->firstPlayer);
             }
 
-            if (count($firstPlayer->cards) == 0) {
-                foreach ($this->playersQueue as $key => $player) {
-                    if ($player == $firstPlayer) {
-                        //unset($firstPlayer);
-                        unset($this->playersQueue[$key]);
-                    }
-                }
+            //удаляем игрока из игры (очереди)
+            if (count($this->firstPlayer->cards) == 0) {
+                $this->kickOutPlayer($this->firstPlayer);
+            }
+            if (count($this->secondPlayer->cards) == 0) {
+                $this->kickOutPlayer($this->secondPlayer);
             }
 
-            if (count($secondPlayer->cards) == 0) {
-                foreach ($this->playersQueue as $key => $player) {
-                    if ($player == $secondPlayer) {
-                        //unset($secondPlayer);
-                        unset($this->playersQueue[$key]);
-                    }
-                }
-            }
-
+            //очищаем на всякий случай хип
             $this->heap = [];
 
+            //узнаем результат игры
             if (count($this->playersQueue) == 0) {
-                $this->addToResult('');
+                $this->addToResult();
                 $this->addToResult('Fool: -');
                 return;
             } elseif (count($this->playersQueue) == 1) {
-                $this->addToResult('');
+                $this->addToResult();
                 $player = array_shift($this->playersQueue);
                 $this->addToResult('Fool: ' . $player->name);
                 return;
@@ -285,9 +288,8 @@ class CardsDeck
         for ($i = 0; $i < 1000; $i++) {
             $n = ($this->rand + $i * 2) % self::DECK_COUNT;
             
-            /* TODO
+            /*
             Мне не нравится этот кусок кода, я не придумал более изящного решения, но это работает
-            Если не забуду, подумаю, как его переделать
              */
             //рандомная карта для переноса на верхнюю позицию
             $t = $this->deck[$n];
@@ -320,7 +322,7 @@ class CardsDeck
         if ($this->trump != null) {
             throw new Exception('Карта-козырь уже выбрана');
         }
-        //TODO да-да, знаю, снова этот кривой код
+        //да-да, знаю, снова этот кривой код
         $this->trump = array_shift($this->deck);
         array_push($this->deck, $this->trump);
         $this->deck = array_values($this->deck);
@@ -544,5 +546,5 @@ class Player
 
 
 /* ---------- Тестим наше чудо ------------ */
-echo (new GameFool())(new CardsDeck(54351))(new Player('Rick'))(new Player('Morty'))(new Player('Summer'))();
+echo (new GameFool())(new CardsDeck(37485))(new Player('Rick'))(new Player('Morty'))(new Player('Summer'))();
 ?>

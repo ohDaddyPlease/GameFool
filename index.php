@@ -138,6 +138,7 @@ class GameFool
         }
     }
 
+    //второй игрок проиграл
     private function secondPlayerLoose() {
           //первый игрок отдаёт свои карты того же достоинства
           $this->firstPlayer->giveCards();
@@ -546,5 +547,10 @@ class Player
 
 
 /* ---------- Тестим наше чудо ------------ */
-echo (new GameFool())(new CardsDeck(37485))(new Player('Rick'))(new Player('Morty'))(new Player('Summer'))();
+echo (new GameFool())
+(new Player('Rick'))
+(new Player('Morty'))
+(new Player('Summer'))
+(new CardsDeck(rand(1, 0xffff)))
+();
 ?>

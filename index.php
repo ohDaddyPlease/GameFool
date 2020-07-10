@@ -404,7 +404,8 @@ class Player
                     $this->sortCards();
                     return true;
                 } elseif (
-                    (count($this->cards) < 2) && $this->game->deck->getPriority($playerCard) == $highCard
+                    (count($this->cards) < 2) && 
+                    $this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard)
                 ) {
                     $this->game->addToResult($this->game->spaces . $this->name . ' --> ' . $playerCard);
                     $this->game->heap[] = $playerCard;
@@ -438,17 +439,18 @@ class Player
                     $this->game->addToResult($this->game->spaces . $this->name . ' --> ' . $playerCard);
                     $this->game->heap[] = $playerCard;
                     unset($this->cards[$key]);
-                    $this->sortCards();
                 } elseif (
                     (count($this->cards) == 1) && 
-                    $this->game->deck->getSuit($playerCard) == $trumpSign && 
-                    $this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard)) {
+                    //$this->game->deck->getSuit($playerCard) == $trumpSign && 
+                    $this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard)
+                    ) {
                     $this->game->addToResult($this->game->spaces . $this->name . ' --> ' . $playerCard);
                     $this->game->heap[] = $playerCard;
                     unset($this->cards);
                 }
             }
         }
+        $this->sortCards();
     }
 
     //сортировка по порядку
@@ -555,7 +557,7 @@ class Player
 
 
 /* ---------- Тестим наше чудо ------------ */
-$a = (new GameFool())(new CardsDeck(24617))(new Player('Rick'))(new Player('Morty'))(new Player('Summer'))();
+$a = (new GameFool())(new CardsDeck(35897))(new Player('Rick'))(new Player('Morty'))(new Player('Summer'))();
 echo $a;
 // echo '<pre>';
 // print_r($a);

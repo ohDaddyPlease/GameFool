@@ -13,10 +13,10 @@ class GameFool
     public const START_CARDS_COUNT = 6;
 
     //массив объектов-игроков
-    public $players = [];
+    public $players;
 
     //колода карт игры
-    public $deck = null;
+    public $deck = [];
 
     //очередность игроков
     public $playersQueue = [];
@@ -24,17 +24,17 @@ class GameFool
     //событие "Игра запущена"
     public $gameStarted = false;
 
-    //ко-во пробелов для вывода результатов раунда
-    public $spaces = '';
+    //пробелы для вывода результата раунда
+    public $spaces;
 
     //"куча" карт, которые участвовали в раунде
-    public $head = [];
+    public $heap = [];
 
     //результат игры, необходим для конструкции echo (new GameFool)()
-    private $result = '';
+    private $result;
 
     //номер колоды (рандомный)
-    private $deckNumber = 0;
+    private $deckNumber;
 
     //первый игрок в раунде - нападающий
     private $firstPlayer;
@@ -44,15 +44,15 @@ class GameFool
 
 
 
-    public function __invoke($obj = null) {
+    public function __invoke($obj = null)
+    {
         if ($obj instanceof Player) {
-            if (count($this->players) == 4) {
+            if (count($this->players) === 4) {
                 throw new Exception('Игроков не может быть больше ' . self::MAX_PLAYERS);
             }
             $player = $obj;
             $player->game = &$this;
             $this->players[] = $player;
-
         } elseif ($obj instanceof CardsDeck) {
             if ($this->deckNumber != null) {
                 throw new Exception('Колода карт уже сформирована');
@@ -61,8 +61,7 @@ class GameFool
             $deck->game = &$this;
             $this->deck = $deck;
             $this->deckNumber = $deck->rand;
-
-        } elseif ($obj == null) {
+        } elseif ($obj === null) {
             if (count($this->players) < 2) {
                 throw new Exception('Игроков не может быть меньше ' . self::MIN_PLAYERS);
             }
@@ -71,7 +70,7 @@ class GameFool
                 throw new Exception('Игра уже запущена');
             }
 
-            if ($this->deckNumber == null) {
+            if ($this->deckNumber === null) {
                 throw new Exception('Колода карт не сформирована, передайте следующим вызовом объект типа CardsDeck');
             }
             $this->init();
@@ -89,7 +88,8 @@ class GameFool
     }
 
      //старт игры
-     private function init() {
+    private function init()
+    {
         //необходимо установить заголовок, иначе не срабатывают переносы строк
         header('Content-type: text/plain');
 
@@ -121,31 +121,34 @@ class GameFool
         $this->addToResult();
 
         //запускаем раунды
-        $this->play();  
+        $this->play();
     }
 
     //добавить на вывод строку
-    public function addToResult($str = '') {
+    public function addToResult(string $str = '')
+    {
         $this->result .= ($this->result != '') ? "\n" . $str : $str;
     }
 
     //выгоняем игрока из игры
-    private function kickOutPlayer($player) {
+    private function kickOutPlayer(Player $player)
+    {
         foreach ($this->playersQueue as $key => $playerInQueue) {
-            if ($player == $playerInQueue) {
+            if ($player === $playerInQueue) {
                 unset($this->playersQueue[$key]);
             }
         }
     }
 
     //второй игрок проиграл
-    private function secondPlayerLoose() {
-          //первый игрок отдаёт свои карты того же достоинства
-          $this->firstPlayer->giveCards();
+    private function secondPlayerLoose()
+    {
+        //первый игрок отдаёт свои карты того же достоинства
+        $this->firstPlayer->giveCards();
 
-          foreach ($this->heap as $card){
-              $this->addToResult($this->spaces . $this->secondPlayer->name . ' <-- ' . $card);
-          }
+        foreach ($this->heap as $card) {
+            $this->addToResult($this->spaces . $this->secondPlayer->name . ' <-- ' . $card);
+        }
 
           //второй игрок забирает карты из хипа и сортирует карты
           $this->secondPlayer->cards = array_merge($this->secondPlayer->cards, $this->heap);
@@ -153,8 +156,9 @@ class GameFool
     }
 
     //старт игры по раундам
-    private function play() {
-        for ($i = 1; ; $i++) {
+    private function play()
+    {
+        for ($i = 1;; $i++) {
             //берем из очереди первых игроков
             $this->firstPlayer = array_shift($this->playersQueue);
             $this->secondPlayer = array_shift($this->playersQueue);
@@ -163,24 +167,23 @@ class GameFool
             $this->secondPlayerLoose = false;
 
             //собираем номер раунда
-            $roundNumber = (strlen($i) == 1) ? "0$i: " : "$i: ";
+            $roundNumber = (strlen($i) === 1) ? "0$i: " : "$i: ";
 
             //собираем пробелы для корректного вывода результата
             $this->spaces = str_repeat(' ', strlen($roundNumber));
 
             //объявляем игроков для раунда
             $this->addToResult(
-                $roundNumber . 
-                $this->firstPlayer->name . '(' . implode(',', $this->firstPlayer->cards) . ') vs ' .
+                $roundNumber . $this->firstPlayer->name . '(' . implode(',', $this->firstPlayer->cards) . ') vs ' .
                 $this->secondPlayer->name . '(' . implode(',', $this->secondPlayer->cards) . ')'
-        );
+            );
 
             //первый игрок атакует
             $this->firstPlayer->throwCard();
 
             //второй игрок пытается отбиться
             if ($this->secondPlayer->defend()) {
-                while(1) {
+                while (1) {
                     //если он отбился, то первый пытается подкинуть карты
                     if ($this->firstPlayer->tossCard()) {
                         //снова второй пытаестя отбиться
@@ -217,10 +220,10 @@ class GameFool
             }
 
             //удаляем игрока из игры (очереди)
-            if (count($this->firstPlayer->cards) == 0) {
+            if (count($this->firstPlayer->cards) === 0) {
                 $this->kickOutPlayer($this->firstPlayer);
             }
-            if (count($this->secondPlayer->cards) == 0) {
+            if (count($this->secondPlayer->cards) === 0) {
                 $this->kickOutPlayer($this->secondPlayer);
             }
 
@@ -228,11 +231,11 @@ class GameFool
             $this->heap = [];
 
             //узнаем результат игры
-            if (count($this->playersQueue) == 0) {
+            if (count($this->playersQueue) === 0) {
                 $this->addToResult();
                 $this->addToResult('Fool: -');
                 return;
-            } elseif (count($this->playersQueue) == 1) {
+            } elseif (count($this->playersQueue) === 1) {
                 $this->addToResult();
                 $player = array_shift($this->playersQueue);
                 $this->addToResult('Fool: ' . $player->name);
@@ -252,10 +255,10 @@ class CardsDeck
     public $rand = 0;
 
     //карта-козырь
-    public $trump = '';
+    public $trump;
     
     //объект главного класса
-    public $game =  null;
+    public $game;
     
     /*
     изначально отсортированная колода карт по масти в следующем порядке ♠, ♥, ♣, ♦; 
@@ -277,12 +280,14 @@ class CardsDeck
 
 
 
-    public function __construct($rand) {
+    public function __construct(int $rand)
+    {
         $this->rand = $rand;
     }
 
     //рандомная сортировка колоды
-    public function randomSort() {
+    public function randomSort()
+    {
         if ($this->deckSorted) {
             throw new Exception('Карты уже перемешаны');
         }
@@ -305,7 +310,8 @@ class CardsDeck
     }
 
     //раздача карт игрокам
-    public function dealCards() {
+    public function dealCards()
+    {
         if ($this->cardsDealt) {
             throw new Exception('Карты были розданы ранее');
         }
@@ -319,7 +325,8 @@ class CardsDeck
         $this->cardsDealt = true;
     }
 
-    public function setTrump() {
+    public function setTrump()
+    {
         if ($this->trump != null) {
             throw new Exception('Карта-козырь уже выбрана');
         }
@@ -329,12 +336,14 @@ class CardsDeck
         $this->deck = array_values($this->deck);
     }
 
-    public function getSuit($card) {
+    public function getSuit(string $card)
+    {
         preg_match('/\W+/u', $card, $sign);
         return $sign[0];
     }
 
-    public function getPriority($card) {
+    public function getPriority(string $card)
+    {
         preg_match('/(\d+)|([а-яёА-ЯЁ])/u', $card, $priority);
         return $priority[0];
     }
@@ -343,23 +352,25 @@ class CardsDeck
 class Player
 {
     //имя игрока
-    public $name = '';
+    public $name;
 
     //карты игрока; выдаются в начале игры (6 шт)
     public $cards = [];
     
     //объект главного класса
-    public $game =  null;
+    public $game;
 
 
 
 
-    public function __construct($name) {
+    public function __construct(string $name)
+    {
         $this->name = $name;
     }
 
     //бросить самую младшую карту
-    public function throwCard() {
+    public function throwCard()
+    {
         $card = array_shift($this->cards);
         $this->game->heap[] = $card;
         $this->game->addToResult($this->game->spaces . $this->name . ' --> ' . $card);
@@ -367,7 +378,8 @@ class Player
     }
 
     //отбиться
-    public function defend() {
+    public function defend()
+    {
         $attackCard = end($this->game->heap);
         $attackCardPriority = $this->game->deck->getPriority($attackCard);
         $attackCardSuit = $this->game->deck->getSuit($attackCard);
@@ -377,8 +389,8 @@ class Player
             $cardPriority = $this->game->deck->getPriority($card);
             $cardSuit = $this->game->deck->getSuit($card);
             if (
-                ($cardPriority > $attackCardPriority && $cardSuit == $attackCardSuit) ||
-                ($cardSuit == $trump && $attackCardSuit != $cardSuit)
+                ($cardPriority > $attackCardPriority && $cardSuit === $attackCardSuit) ||
+                ($cardSuit === $trump && $attackCardSuit != $cardSuit)
                 ) {
                 $this->game->heap[] = $card;
                 $this->game->addToResult($this->game->spaces . $card . ' <-- ' . $this->name);
@@ -391,17 +403,17 @@ class Player
     }
 
     //подбросить карту
-    public function tossCard() {
-        $highCard = $this->game->deck->getSuit(end($this->cards)) ==  $this->game->deck->getSuit($this->game->deck->trump) ? end($this->cards) : null;
+    public function tossCard()
+    {
+        $highCard = $this->game->deck->getSuit(end($this->cards)) ===  $this->game->deck->getSuit($this->game->deck->trump) ? end($this->cards) : null;
         
         foreach ($this->game->heap as $heapCard) {
             foreach ($this->cards as $key => $playerCard) {
-                if ( 
-                    ($this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard) && 
+                if (
+                    ($this->game->deck->getPriority($playerCard) === $this->game->deck->getPriority($heapCard) &&
                     (count($this->cards) >= 2) && $playerCard != $highCard) ||
                    
-                    ((count($this->cards) < 2) && 
-                    $this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard))
+                    ((count($this->cards) < 2) && $this->game->deck->getPriority($playerCard) === $this->game->deck->getPriority($heapCard))
                 ) {
                     $this->game->addToResult($this->game->spaces . $this->name . ' --> ' . $playerCard);
                     $this->game->heap[] = $playerCard;
@@ -415,7 +427,8 @@ class Player
     }
 
     //взять недостающие карты из колоды
-    public function takeCards() {
+    public function takeCards()
+    {
         while (count($this->game->deck->deck) && count($this->cards) < GameFool::START_CARDS_COUNT) {
             $card = array_shift($this->game->deck->deck);
             $this->cards[] = $card;
@@ -424,18 +437,18 @@ class Player
         $this->sortCards();
     }
 
-    public function giveCards() {
-        $trumpSign = $this->game->deck->getSuit($this->game->deck->trump);
-        $highCard = $this->game->deck->getSuit(end($this->cards)) ==  $this->game->deck->getSuit($this->game->deck->trump) ? end($this->cards) : null;
+    public function giveCards()
+    {
+        $highCard = $this->game->deck->getSuit(end($this->cards)) ===  $this->game->deck->getSuit($this->game->deck->trump) ? end($this->cards) : null;
 
         foreach ($this->game->heap as $heapCard) {
             foreach ($this->cards as $key => $playerCard) {
                 if (
-                    ($this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard) && 
-                    (count($this->cards) != 1) && $playerCard != $highCard) || 
+                    ($this->game->deck->getPriority($playerCard) === $this->game->deck->getPriority($heapCard) &&
+                    (count($this->cards) != 1) && $playerCard != $highCard) ||
                 
-                    ((count($this->cards) == 1) && 
-                    $this->game->deck->getPriority($playerCard) == $this->game->deck->getPriority($heapCard))
+                    ((count($this->cards) === 1) &&
+                    $this->game->deck->getPriority($playerCard) === $this->game->deck->getPriority($heapCard))
                 ) {
                     $this->game->addToResult($this->game->spaces . $this->name . ' --> ' . $playerCard);
                     $this->game->heap[] = $playerCard;
@@ -447,7 +460,8 @@ class Player
     }
 
     //ресолвер приоритета для буквенных приоритетов
-    private function getNumericPriority($card) {    
+    private function getNumericPriority(string $card)
+    {
         $priority = $this->game->deck->getPriority($card);
         switch ($priority) {
             case 'В':
@@ -455,7 +469,7 @@ class Player
             case 'Д':
                 return 12;
             case 'К':
-                return 13; 
+                return 13;
             case 'Т':
                 return 14;
             default:
@@ -464,24 +478,26 @@ class Player
     }
     
     //сортировка по порядку
-    private function sortByPriority(&$arr) {
+    private function sortByPriority(array &$arr)
+    {
         $size = count($arr)-1;
         for ($i = $size; $i>=0; $i--) {
-          for ($j = 0; $j<=($i-1); $j++) {
-              $weight1 = $this->getNumericPriority($arr[$j]);
-              $weight2 = $this->getNumericPriority($arr[$j+1]);
+            for ($j = 0; $j<=($i-1); $j++) {
+                $weight1 = $this->getNumericPriority($arr[$j]);
+                $weight2 = $this->getNumericPriority($arr[$j+1]);
 
-              if ($weight1>$weight2) {
-                  $k = $arr[$j];
-                  $arr[$j] = $arr[$j+1];
-                  $arr[$j+1] = $k;
-              }
+                if ($weight1>$weight2) {
+                    $k = $arr[$j];
+                    $arr[$j] = $arr[$j+1];
+                    $arr[$j+1] = $k;
+                }
             }
         }
     }
 
     //сортировка по масти
-    private function sortBySuit(&$arr) {
+    private function sortBySuit(array &$arr)
+    {
         $priority = [
             '♠' => 1,
             '♣' => 2,
@@ -490,30 +506,32 @@ class Player
         ];
         $size = count($arr)-1;
         for ($i = $size; $i>=0; $i--) {
-          for ($j = 0; $j<=($i-1); $j++) {
-            $weight1 = $this->getNumericPriority($arr[$j]);
-            $weight2 = $this->getNumericPriority($arr[$j+1]);
+            for ($j = 0; $j<=($i-1); $j++) {
+                $weight1 = $this->getNumericPriority($arr[$j]);
+                $weight2 = $this->getNumericPriority($arr[$j+1]);
 
-            if ($weight1 != $weight2) {
-                continue;
-            }
+                if ($weight1 != $weight2) {
+                    continue;
+                }
 
-            $sign1 = $this->game->deck->getSuit($arr[$j]);
-            $sign2 = $this->game->deck->getSuit($arr[$j+1]);
+                $sign1 = $this->game->deck->getSuit($arr[$j]);
+                $sign2 = $this->game->deck->getSuit($arr[$j+1]);
 
-            if ($priority[$sign1]>$priority[$sign2]) {
-                $k = $arr[$j];
-                $arr[$j] = $arr[$j+1];
-                $arr[$j+1] = $k;
-            }
+                if ($priority[$sign1]>$priority[$sign2]) {
+                    $k = $arr[$j];
+                    $arr[$j] = $arr[$j+1];
+                    $arr[$j+1] = $k;
+                }
             }
         }
     }
 
     /*
-    сортировка карт игрока по достоинству и по масти (порядок: ♠, ♣, ♦, ♥), затем козыри, также сортированные по достоинству;
+    сортировка карт игрока по достоинству и по масти (порядок: ♠, ♣, ♦, ♥), 
+    затем козыри, также сортированные по достоинству;
     */
-    public function sortCards() {
+    public function sortCards()
+    {
         //находим символ козыря
         $trumpSign = $this->game->deck->getSuit($this->game->deck->trump);
 
@@ -522,7 +540,7 @@ class Player
         $otherCards = [];
         foreach ($this->cards as $card) {
             $sign = $this->game->deck->getSuit($card);
-            if ($sign == $trumpSign) {
+            if ($sign === $trumpSign) {
                 $trumps[] = $card;
                 continue;
             }
@@ -540,17 +558,12 @@ class Player
         $this->cards = array_merge($otherCards, $trumps);
     }
 
-    public function showCards() {
+    public function showCards()
+    {
         return $this->name . ': ' . implode(",", $this->cards);
     }
 }
 
 
 /* ---------- Тестим наше чудо ------------ */
-echo (new GameFool())
-(new Player('Rick'))
-(new Player('Morty'))
-(new Player('Summer'))
-(new CardsDeck(rand(1, 0xffff)))
-();
-?>
+echo (new GameFool())(new Player('Rick'))(new Player('Morty'))(new Player('Summer'))(new CardsDeck(18321))();
